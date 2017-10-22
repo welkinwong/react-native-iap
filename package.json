@@ -2,7 +2,7 @@
 {
   "name": "react-native-iap",
   "version": "0.0.2",
-  "description": "Purchase",
+  "description": "In App Purchase(iOS), In App Billing (Android) module for React Native",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

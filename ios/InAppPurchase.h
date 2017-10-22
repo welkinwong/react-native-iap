@@ -5,7 +5,7 @@
 #import <React/RCTBridgeModule.h>
 #endif
 
-@interface RNReactNativeIap : NSObject <RCTBridgeModule>
+@interface InAppPurchase : NSObject <RCTBridgeModule>
 
 @end
   
