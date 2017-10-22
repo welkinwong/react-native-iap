@@ -15,7 +15,7 @@ const InAppPurchaseIOS = {
 
 
 
-const RNInAppPurchase = Platform.OS === 'ios'
+const RNReactNativeIap = Platform.OS === 'ios'
   ? InAppPurchaseIOS
   : InAppPurchaseIOS; // FIXME  안드로이드 모듈.
 

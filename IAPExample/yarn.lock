@@ -3815,9 +3815,9 @@ react-native-extended-stylesheet@^0.7.0:
     css-mediaquery "^0.1.2"
     object-resolve-path "^1.1.0"
 
-react-native-iap@^0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/react-native-iap/-/react-native-iap-0.0.1.tgz#71d564b743641b874482badfeeaebc1e207ffa16"
+react-native-iap@0.0.3:
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/react-native-iap/-/react-native-iap-0.0.3.tgz#c002f53f0c8eb6b53e8e1f16dc069eb02af7c4a2"
 
 react-native-tab-view@^0.0.69:
   version "0.0.69"
