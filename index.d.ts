@@ -48,10 +48,10 @@ export function prepare() : Promise<void>;
 export function endConnection() : Promise<void>;
 
 /**
- * Refresh all remaining items. No-op in iOS.
+ * Consume all items in android. No-op in iOS.
  * @returns {Promise<void>}
  */
-export function refreshItems() : Promise<void>;
+export function consumeAllItems() : Promise<void>;
 
 /**
  * Get a list of products (consumable and non-consumable items, but not subscriptions)
@@ -94,8 +94,42 @@ export function buySubscription(sku: string) : Promise<SubscriptionPurchase>;
 export function buyProduct(sku: string) : Promise<ProductPurchase>;
 
 /**
+ * Buy a product without finish transanction to sync with IOS purchasing consumables. Make sure to call finishTransanction when you are done with it or the purchase may not be transferred. Also, note that this method is not changed from buyProduct in android.
+ * @param {string} sku The product's sku/ID
+ * @returns {Promise<Purchase>}
+ */
+export function buyProductWithoutFinishTransaction(sku: string) : Promise<ProductPurchase>;
+
+/**
+ * Send finishTransaction call to Apple IAP server. Call this function after receipt validation process.
+ * @returns void
+ */
+export function finishTransaction(): void;
+
+/**
  * Consume a product (on Android.) No-op on iOS.
  * @param {string} token The product's token (on Android)
  * @returns {Promise}
  */
 export function consumePurchase(token: string) : Promise<void>;
+
+/**
+ * Validate receipt for ios.
+ * @param {receipt-data: string, password?: string} receiptBody the receipt body to send to apple server.
+ * @param {string} isTest whether this is in test environment which is sandbox.
+ * @param {number} RNVersion version of react-native.
+ * @returns {json | boolean}
+ */
+export function validateReceiptIos(receiptBody: object, isTest:boolean) : object | boolean;
+
+/**
+ * Validate receipt for ios.
+ * @param {string} packageName package name of your app.
+ * @param {string} productId product id for your in app product.
+ * @param {string} productToken token for your purchase. Found in `transanctionReceipt` after `buyProduct` method.
+ * @param {string} accessToken accessToken from googleApis.
+ * @param {boolean} isSub whether this is subscription or inapp. `true` for subscription.
+ * @param {number} RNVersion version of react-native.
+ * @returns {json | boolean}
+ */
+export function validateReceiptAndroid (packageName: string, productId: string, productToken: string, accessToken: string, isSub: boolean);

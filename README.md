@@ -17,6 +17,8 @@ Do not use version `0.3.4` ~ `0.3.8` because there was some issues in merging PR
 `react-native-iap` module versions that are not described in `change logs` may not run as expected so please refer to version mentioned in `Changelogs` below.
 
 ## Migration Guide
+Difference between `0.3.*` and `1.0.0` has only one method renaming `refreshItems` to `consumeAllItems`.
+
 To migrate `0.2.*` to `0.3.*`, You can follow below guide.
 
 | 0.2.* | 0.3.* |
@@ -73,6 +75,17 @@ Also there are some other methods that is not supported in ios and implemented i
 Lastly, this module also supports types for typescript users from `0.2.5`.
 
 ## Changelogs
+- **[1.0.0]**
+  + Renamed `refreshItems` to `consumeAllItems` for clear understanding.
+  + Fixed critical bug in ios which products are recognized as `subs` only.
+- **[0.3.24]**
+  + [existing iOS bug] `itemType` of `Product` information always returns `sub`. It is unnecessary in iOS and will be deprecated.
+- **[0.3.21]**
+  + Able to manage consumption in ios with `buyProductWithoutFinishTransaction` and `finishTransaction`.
+- **[0.3.19]**
+  + Updated `validateReceiptIos` and `validateReceiptAndroid` methods to support all RN version.
+- **[0.3.17]**
+  + Implemented receipt validation. See the `Receipt validation` section in the readme. For `android`, you should have your own backend to get `access_token` from `googleapis`.
 - **[0.3.13]**
   + Implemented `refreshItems` in android. This is to consume all products in anroid to rebuy the item. Becareful to use this method because if will affect your history of playstore. Only use this when you don't care about the history in playstore. Use this method after `prepare` method.
 - **[0.3.10]**
@@ -139,9 +152,13 @@ Lastly, this module also supports types for typescript users from `0.2.5`.
 | getAvailablePurchases | | `Promise<Purchase[]>` | Get all purchases made by the user (either non-consumable, or haven't been consumed yet)
 | buySubscription | `string` Subscription ID/sku | `Promise<Purchase>` | Create (buy) a subscription to a sku |
 | buyProduct | `string` Product ID/sku | `Promise<Purchase>` | Buy a product |
+| buyProductWithoutFinishTransaction | `string` Product ID/sku | `Promise<Purchase>` | Buy a product without finish transaction call (iOS only) |
+| finishTransaction | `void` | `void` | Send finishTransaction call to Apple IAP server. Call this function after receipt validation process |
 | consumeProduct | `string` Purchase token | `Promise<void>` | Consume a product (on Android.) No-op on iOS. |
 | endConnection | | `Promise<void>` | End billing connection (on Android.) No-op on iOS. |
-| refreshItems | | `Promise<void>` | Consume all items in android so they are able to buy again (on Android.) No-op on iOS. |
+| consumeAllItems | | `Promise<void>` | Consume all items in android so they are able to buy again (on Android.) No-op on iOS. |
+| validateReceiptIos | `object` receiptBody, `boolean` isTest, `number` RNVersion | `object or boolean` result | validate receipt for ios. |
+| validateReceiptAndroid | `string` packageName, `string` productId, `string` productToken, `string` accessToken, `boolean` isSubscription, `number` RNVersion | `object or boolean` result | validate receipt for android. |
 
 ## Npm repo
 https://www.npmjs.com/package/react-native-iap
@@ -175,7 +192,7 @@ You should remove this before running `pod install` and follow the manual instal
 4. Run your project (`Cmd+R`)<
 
 #### Android
-1. Open up `android/app/src/main/java/[...]/MainActivity.java`
+1. Open up `android/app/src/main/java/[...]/MainApplication.java`
   - Add `import com.dooboolab.RNIap.RNIapPackage;` to the imports at the top of the file
   - Add `new RNIapPackage()` to the list returned by the `getPackages()` method
 2. Append the following lines to `android/settings.gradle`:
@@ -281,7 +298,7 @@ Users can cancel subscriptions by using the iOS System Settings.
 
 
 ## Consumption and Restoring Purchases
-You can use `getAvailablePurchases()` to do what's commonly understood as "restoring" purchases. Once an item is consumed, it will no longer be available in `getAvailablePurchases()` and will only be available via `getPurchaseHistory()`. However, this method has some caviats on Android -- namely that purchase history only exists for the single most recent purchase of each SKU -- so your best bet is to track consumption in your app yourself. By default all items that are purchased will not be consumed unless they are automatically consumed by the store (for example, if you create a consumable item for iOS.) This means that you must manage consumption yourself.  Purchases can be consumed by calling `consumePurchase()`. If you want to consume all items, you have to iterate over the purchases returned by `getAvailablePurchases()`.
+You can use `getAvailablePurchases()` to do what's commonly understood as "restoring" purchases. Once an item is consumed, it will no longer be available in `getAvailablePurchases()` and will only be available via `getPurchaseHistory()`. However, this method has some caveats on Android -- namely that purchase history only exists for the single most recent purchase of each SKU -- so your best bet is to track consumption in your app yourself. By default all items that are purchased will not be consumed unless they are automatically consumed by the store (for example, if you create a consumable item for iOS.) This means that you must manage consumption yourself.  Purchases can be consumed by calling `consumePurchase()`. If you want to consume all items, you have to iterate over the purchases returned by `getAvailablePurchases()`.
 
 ```javascript
 getPurchases = async() => {
@@ -298,7 +315,7 @@ getPurchases = async() => {
         restoredTitles += restoredTitles.length > 0 ? 'No Ads' : ', No Ads';
       } else if (purchase.productId == 'com.example.coins100') {
         CoinStore.addCoins(100);
-        await RNIap.consumePurchase(purchase.transactionReceipt);
+        await RNIap.consumePurchase(purchase.purchaseToken);
       }
     })
     Alert.alert('Restore Successful', 'You successfully restored the following purchases: ' + restoredTitles);
@@ -321,12 +338,39 @@ Returned purchases is an array of each purchase transaction with the following k
   originalTransactionIdentifier // available on iOS
 }
 ```
-
 You need to test with one sandbox account, because the account holds previous purchase history.
 
+
+## Receipt validation
+From `react-native-iap@0.3.16`, we support receipt validation. For android, you need seperate json file from service account to get the `access_token` from `google-apis`, therefore it is impossible to implement serverlessly. You should have your own backend and get `access_token`. With `access_token` you can simplly call `validateReceiptAndroid` method we implemented. Further reading is [here](https://stackoverflow.com/questions/35127086/android-inapp-purchase-receipt-validation-google-play?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa).
+
+Currently, serverless receipt validation is possible using `validateReceiptIos` method. First parameter, you should pass `transactionReceipt` which returns after `buyProduct`. Second parameter, you should pass whether this is `test` environment. If `true`, it will request to `sandbox` and `false` it will request to `production`.
+
+```javascript
+const receiptBody = {
+  'receipt-data': purchase.transactionReceipt,
+};
+const result = await validateReceiptIos(receiptBody, false, 54);
+console.log(result);
+```
+For further information, please refer to [guide](https://developer.apple.com/library/content/releasenotes/General/ValidateAppStoreReceipt/Chapters/ValidateRemotely.html).
+
+### iOS Purchasing process right way.
+
+Purchasing consumable products in iOS consists of the following steps.
+
+```sh
+Step 1 : Purchasing via IAP (Apple server)
+Step 2 : Check the validation of the receipt (either on device or server)
+Step 3 : Apply the product to the Application
+```
+
+But, sometimes app doesn't make it to step 3, and user loose the product with successful payment.
+Non-consumable products can be restored via getPurchaseHistory function, but consumable products can be lost.
+In this case, use buyProductWithoutFinishTransaction to purchase action and use finishTransaction to finish payment after receipt validation and supply the products to user.
+
 ## Todo
-- Add introductory price as in [issue](https://github.com/dooboolab/react-native-iap/issues/23).
-- Local receipt validation as in [issue](https://github.com/dooboolab/react-native-iap/issues/51).
+- 
 
 ## Contribution Guide
 
@@ -336,11 +380,9 @@ You need to test with one sandbox account, because the account holds previous pu
 * Please be as detailed and concise as possible.
 	* If necessary, please take a screenshot and upload an image.
 
-### Pull request(PR)
-* Do not modify the code in the `master` branch.
-* PR allows only the `dev` branch.
-* It is useful to use a topic branch that has the parent `dev` as its parent.
 
+### Pull request(PR)
+* Now PR is available to `master` branch.
 
 ### Coding Guidelines
 Please follow the Coding conventions as much as possible when contributing your code.

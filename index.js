@@ -30,7 +30,7 @@ export const endConnection = () => Platform.select({
  * Consume all remaining tokens. Android only.
  * @returns {Promise<void>}
  */
-export const refreshItems = () => Platform.select({
+export const consumeAllItems = () => Platform.select({
   ios: () => Promise.resolve(),
   android: () => RNIapModule.refreshItems(),
 })();
@@ -103,6 +103,28 @@ export const buyProduct = (sku) => Platform.select({
   android: () => RNIapModule.buyItemByType(ANDROID_ITEM_TYPE_IAP, sku)
 })();
 
+
+/**
+ * Buy a product without transaction finish (iOS only)
+ *   Call finishTransaction after receipt validation process.
+ * @param {string} sku The product's sku/ID
+ * @returns {Promise<ProductPurchase>}
+ */
+export const buyProductWithoutFinishTransaction = (sku) => Platform.select({
+  ios: () => RNIapIos.buyProductWithoutAutoConfirm(sku),
+  android: () => RNIapModule.buyItemByType(ANDROID_ITEM_TYPE_IAP, sku)
+})();
+
+/**
+ * Finish Transaction (iOS only)
+ *   Explicitly call transaction finish
+ * @returns {Promise<ProductPurchase>}
+ */
+export const finishTransaction = () => Platform.select({
+  ios: () => RNIapIos.finishTransaction(),
+  android: () => console.log('android doesn\'t need finish Transaction. Void function')
+})();
+
 /**
  * Consume a product (on Android.) No-op on iOS.
  * @param {string} token The product's token (on Android)
@@ -113,13 +135,98 @@ export const consumePurchase = (token) => Platform.select({
   android: () => RNIapModule.consumeProduct(token)
 })();
 
+/**
+ * Validate receipt for ios.
+ * @param {receipt-data: string, password?: string} receiptBody the receipt body to send to apple server.
+ * @param {string} isTest whether this is in test environment which is sandbox.
+ * @param {number} RNVersion version of react-native.
+ * @returns {json | boolean}
+ */
+export const validateReceiptIos = async (receiptBody, isTest, RNVersion) => {
+  if (Platform.OS === 'ios') {
+    const URL = !isTest ? 'https://sandbox.itunes.apple.com/verifyReceipt' : 'https://buy.itunes.apple.com/verifyReceipt';
+    try {
+      let res = await fetch(URL, {
+        method: 'POST',
+        headers: new Headers({
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify(receiptBody),
+      });
+
+      if (res) {
+        if (RNVersion < 54) {
+          const json = JSON.parse(res._bodyInit);
+          return json;
+        }
+  
+        const json = await res.text();
+        res = JSON.parse(json);
+      }
+  
+      return false;
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+  }
+  console.log('No ops in android.');
+  return false;
+};
+
+/**
+ * Validate receipt for ios.
+ * @param {string} packageName package name of your app.
+ * @param {string} productId product id for your in app product.
+ * @param {string} productToken token for your purchase.
+ * @param {string} accessToken accessToken from googleApis.
+ * @param {boolean} isSub whether this is subscription or inapp. `true` for subscription.
+ * @param {number} RNVersion version of react-native.
+ * @returns {json | boolean}
+ */
+export const validateReceiptAndroid = async (packageName, productId, productToken, accessToken, isSub, RNVersion) => {
+  const URL = !isSub
+    ? `https://www.googleapis.com/androidpublisher/v2/applications/${packageName}/purchases/products/${productId}/tokens/${productToken}?access_token=${accessnToken}`
+    : `https://www.googleapis.com/androidpublisher/v2/applications/${packageName}/purchases/subscriptions/${productId}/tokens/${productToken}?access_token=${accessToken}`;
+  try {
+    let res = await fetch(URL, {
+      method: 'GET',
+      headers: new Headers({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }),
+    });
+
+    if (res) {
+      if (RNVersion < 54) {
+        const json = JSON.parse(res._bodyInit);
+        return json;
+      }
+  
+      const json = await res.text();
+      res = JSON.parse(json);
+    }
+
+    return false;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
+};
+
 export default {
   prepare,
   getProducts,
   getSubscriptions,
   getPurchaseHistory,
   getAvailablePurchases,
+  consumeAllItems,
   buySubscription,
   buyProduct,
+  buyProductWithoutFinishTransaction,
+  finishTransaction,
   consumePurchase,
+  validateReceiptIos,
+  validateReceiptAndroid
 };
